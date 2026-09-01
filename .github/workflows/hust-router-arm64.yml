@@ -1,0 +1,98 @@
+name: HUST Router arm64 carrier
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/hust-router-arm64.yml"
+      - "docker/**"
+      - "src/vllm_router/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified arm64 image to this repository's GHCR
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  TEST_IMAGE: hust-router-arm64:test
+
+jobs:
+  validate-arm64:
+    name: Build and smoke-test linux/arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build arm64 validation image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/arm64
+          build-args: INSTALL_OPTIONAL_DEP=default
+          load: true
+          push: false
+          tags: ${{ env.TEST_IMAGE }}
+          cache-from: type=gha,scope=hust-router-arm64
+          cache-to: type=gha,mode=max,scope=hust-router-arm64
+
+      - name: Smoke-test Router entrypoint
+        run: docker run --rm --platform linux/arm64 "${TEST_IMAGE}" --help
+
+  publish-arm64:
+    name: Publish linux/arm64 to GHCR
+    needs: validate-arm64
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Login to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish arm64 image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/arm64
+          build-args: INSTALL_OPTIONAL_DEP=default
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/router:arm64
+            ghcr.io/${{ github.repository }}/router:${{ github.sha }}-arm64
+          cache-from: type=gha,scope=hust-router-arm64
+          cache-to: type=gha,mode=max,scope=hust-router-arm64
