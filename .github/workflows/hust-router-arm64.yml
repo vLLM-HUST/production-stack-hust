@@ -20,6 +20,7 @@ permissions:
 
 env:
   TEST_IMAGE: hust-router-arm64:test
+  IMAGE_REPOSITORY: ghcr.io/vllm-hust/production-stack-hust/router
 
 jobs:
   validate-arm64:
@@ -92,7 +93,7 @@ jobs:
           build-args: INSTALL_OPTIONAL_DEP=default
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/router:arm64
-            ghcr.io/${{ github.repository }}/router:${{ github.sha }}-arm64
+            ${{ env.IMAGE_REPOSITORY }}:arm64
+            ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}-arm64
           cache-from: type=gha,scope=hust-router-arm64
           cache-to: type=gha,mode=max,scope=hust-router-arm64
