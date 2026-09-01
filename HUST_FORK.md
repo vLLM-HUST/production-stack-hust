@@ -16,6 +16,10 @@ delegated lifecycle operations belong to vLLM-HUST Extension Manager, not this
 fork. Publishing is manual and remains disabled until the arm64 validation job
 passes on `main`.
 
+The fork does not operate self-hosted GitHub runners. Automated validation uses
+GitHub-hosted runners; accelerator and Kubernetes acceptance runs on demand on
+separately operated hosts and is recorded as external evidence.
+
 ## Synchronizing upstream
 
 ```bash
